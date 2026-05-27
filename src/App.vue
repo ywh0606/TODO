@@ -1,13 +1,14 @@
 <template>
   <div class="app">
     <h1>我的清单</h1>
-    <p>任务总数: {{ store.stats.total }}</p>
+    <TaskInput />
   </div>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
 import { useTaskStore } from './stores/taskStore'
+import TaskInput from './components/TaskInput.vue'
 
 const store = useTaskStore()
 
