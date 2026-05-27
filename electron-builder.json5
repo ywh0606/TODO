@@ -1,6 +1,6 @@
 {
   "appId": "com.todo.app",
-  "productName": "我的清单",
+  "productName": "Todo App",
   "directories": {
     "output": "release"
   },
@@ -14,7 +14,8 @@
         "target": "nsis",
         "arch": ["x64"]
       }
-    ]
+    ],
+    "signAndEditExecutable": false
   },
   "nsis": {
     "oneClick": false,
