@@ -2,12 +2,20 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const fs = require('fs')
 
-const DATA_FILE = path.join(app.getPath('userData'), 'tasks.json')
+let DATA_FILE
+
+function getDataFile() {
+  if (!DATA_FILE) {
+    DATA_FILE = path.join(app.getPath('userData'), 'tasks.json')
+  }
+  return DATA_FILE
+}
 
 function loadData() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'))
+    const file = getDataFile()
+    if (fs.existsSync(file)) {
+      return JSON.parse(fs.readFileSync(file, 'utf-8'))
     }
   } catch (e) {
     console.error('Failed to load data:', e)
@@ -16,7 +24,8 @@ function loadData() {
 }
 
 function saveData(tasks) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(tasks, null, 2))
+  const file = getDataFile()
+  fs.writeFileSync(file, JSON.stringify(tasks, null, 2))
 }
 
 let mainWindow
@@ -30,13 +39,12 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     },
-    titleBarStyle: 'hiddenInset',
     backgroundColor: '#FFFFFF'
   })
 
-  if (process.env.NODE_ENV === 'development' || process.argv.includes('--dev')) {
+  // 开发环境加载localhost，生产环境加载打包后的文件
+  if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
