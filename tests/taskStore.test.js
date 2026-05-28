@@ -365,17 +365,17 @@ describe('filteredTasks', () => {
     expect(store.filteredTasks).toHaveLength(2)
   })
 
-  it('按优先级排序：high > medium > low', async () => {
+  it('按手动 order 排序', async () => {
     const store = useTaskStore()
-    await store.addTask('低', 'low', null)
-    await store.addTask('高', 'high', null)
-    await store.addTask('中', 'medium', null)
+    await store.addTask('第一个', 'low', null)
+    await store.addTask('第二个', 'high', null)
+    await store.addTask('第三个', 'medium', null)
 
     store.filter = 'all'
 
-    expect(store.filteredTasks[0].priority).toBe('high')
-    expect(store.filteredTasks[1].priority).toBe('medium')
-    expect(store.filteredTasks[2].priority).toBe('low')
+    expect(store.filteredTasks[0].title).toBe('第一个')
+    expect(store.filteredTasks[1].title).toBe('第二个')
+    expect(store.filteredTasks[2].title).toBe('第三个')
   })
 
   it('已完成任务排在未完成之后', async () => {
@@ -418,5 +418,215 @@ describe('saveTasks 数据一致性', () => {
     await store.deleteTask(taskId)
     savedData = mockSaveTasks.mock.calls[2][0]
     expect(savedData).toHaveLength(0)
+  })
+})
+
+// ============================================================
+// order 字段
+// ============================================================
+describe('order 字段', () => {
+  it('新任务带有 order 字段', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务1', 'medium', null)
+
+    expect(store.tasks[0].order).toBe(0)
+  })
+
+  it('多个任务的 order 递增', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务1', 'medium', null)
+    await store.addTask('任务2', 'medium', null)
+    await store.addTask('任务3', 'medium', null)
+
+    expect(store.tasks[0].order).toBe(0)
+    expect(store.tasks[1].order).toBe(1)
+    expect(store.tasks[2].order).toBe(2)
+  })
+})
+
+// ============================================================
+// updateTask
+// ============================================================
+describe('updateTask', () => {
+  it('更新任务标题', async () => {
+    const store = useTaskStore()
+    await store.addTask('原标题', 'medium', null)
+    const id = store.tasks[0].id
+
+    await store.updateTask(id, { title: '新标题' })
+
+    expect(store.tasks[0].title).toBe('新标题')
+  })
+
+  it('更新任务优先级', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'low', null)
+    const id = store.tasks[0].id
+
+    await store.updateTask(id, { priority: 'high' })
+
+    expect(store.tasks[0].priority).toBe('high')
+  })
+
+  it('更新任务截止日期', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+    const id = store.tasks[0].id
+
+    await store.updateTask(id, { dueDate: '2026-12-31T00:00:00.000Z' })
+
+    expect(store.tasks[0].dueDate).toBe('2026-12-31T00:00:00.000Z')
+  })
+
+  it('更新后 updatedAt 被更新', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+    const id = store.tasks[0].id
+    const originalUpdatedAt = store.tasks[0].updatedAt
+
+    await new Promise(r => setTimeout(r, 10))
+    await store.updateTask(id, { title: '新标题' })
+
+    expect(store.tasks[0].updatedAt).not.toBe(originalUpdatedAt)
+  })
+
+  it('更新后调用 saveTasks 保存', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+    vi.clearAllMocks()
+
+    await store.updateTask(store.tasks[0].id, { title: '新标题' })
+
+    expect(mockSaveTasks).toHaveBeenCalledTimes(1)
+  })
+
+  it('更新不存在的 id 不会报错', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+
+    await expect(store.updateTask('non-existent', { title: '新' })).resolves.not.toThrow()
+    expect(store.tasks[0].title).toBe('任务')
+  })
+
+  it('白名单外的字段不会被更新', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+    const id = store.tasks[0].id
+    const originalCompleted = store.tasks[0].completed
+    const originalOrder = store.tasks[0].order
+    const originalCreatedAt = store.tasks[0].createdAt
+
+    await store.updateTask(id, {
+      title: '新标题',
+      completed: true,
+      order: 999,
+      createdAt: '2000-01-01T00:00:00.000Z'
+    })
+
+    expect(store.tasks[0].title).toBe('新标题')
+    expect(store.tasks[0].completed).toBe(originalCompleted)
+    expect(store.tasks[0].order).toBe(originalOrder)
+    expect(store.tasks[0].createdAt).toBe(originalCreatedAt)
+  })
+})
+
+// ============================================================
+// reorderTask
+// ============================================================
+describe('reorderTask', () => {
+  it('移动任务到目标任务位置', async () => {
+    const store = useTaskStore()
+    await store.addTask('第一个', 'medium', null)
+    await store.addTask('第二个', 'medium', null)
+    await store.addTask('第三个', 'medium', null)
+
+    const firstId = store.tasks[0].id
+    const thirdId = store.tasks[2].id
+    await store.reorderTask(firstId, thirdId) // 移到第三个位置
+
+    expect(store.tasks[0].title).toBe('第二个')
+    expect(store.tasks[1].title).toBe('第三个')
+    expect(store.tasks[2].title).toBe('第一个')
+  })
+
+  it('重排后 order 字段被重新分配', async () => {
+    const store = useTaskStore()
+    await store.addTask('第一个', 'medium', null)
+    await store.addTask('第二个', 'medium', null)
+    await store.addTask('第三个', 'medium', null)
+
+    const firstId = store.tasks[0].id
+    const thirdId = store.tasks[2].id
+    await store.reorderTask(firstId, thirdId)
+
+    expect(store.tasks[0].order).toBe(0)
+    expect(store.tasks[1].order).toBe(1)
+    expect(store.tasks[2].order).toBe(2)
+  })
+
+  it('重排后调用 saveTasks 保存', async () => {
+    const store = useTaskStore()
+    await store.addTask('第一个', 'medium', null)
+    await store.addTask('第二个', 'medium', null)
+    vi.clearAllMocks()
+
+    await store.reorderTask(store.tasks[0].id, store.tasks[1].id)
+
+    expect(mockSaveTasks).toHaveBeenCalledTimes(1)
+  })
+
+  it('移动到相同位置不触发保存', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+    vi.clearAllMocks()
+
+    await store.reorderTask(store.tasks[0].id, store.tasks[0].id)
+
+    expect(mockSaveTasks).not.toHaveBeenCalled()
+  })
+
+  it('移动不存在的 id 不会报错', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+
+    await expect(store.reorderTask('non-existent', store.tasks[0].id)).resolves.not.toThrow()
+  })
+
+  it('目标任务不存在不会报错', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务', 'medium', null)
+
+    await expect(store.reorderTask(store.tasks[0].id, 'non-existent')).resolves.not.toThrow()
+  })
+})
+
+// ============================================================
+// loadTasks 数据迁移
+// ============================================================
+describe('loadTasks 数据迁移', () => {
+  it('旧任务加载时自动补上 order 字段', async () => {
+    const savedTasks = [
+      { id: '1', title: '旧任务1', completed: false, priority: 'medium', dueDate: null, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      { id: '2', title: '旧任务2', completed: false, priority: 'high', dueDate: null, createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z' }
+    ]
+    mockLoadTasks.mockResolvedValue(savedTasks)
+
+    const store = useTaskStore()
+    await store.loadTasks()
+
+    expect(store.tasks[0].order).toBe(0)
+    expect(store.tasks[1].order).toBe(1)
+  })
+
+  it('已有 order 字段的任务不被覆盖', async () => {
+    const savedTasks = [
+      { id: '1', title: '有order', completed: false, priority: 'medium', dueDate: null, order: 5, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }
+    ]
+    mockLoadTasks.mockResolvedValue(savedTasks)
+
+    const store = useTaskStore()
+    await store.loadTasks()
+
+    expect(store.tasks[0].order).toBe(5)
   })
 })
