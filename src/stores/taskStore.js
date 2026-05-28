@@ -17,7 +17,11 @@ export const useTaskStore = defineStore('tasks', () => {
   // 保存任务
   async function saveTasks() {
     if (window.electronAPI) {
-      await window.electronAPI.saveTasks(tasks.value)
+      try {
+        await window.electronAPI.saveTasks(JSON.parse(JSON.stringify(tasks.value)))
+      } catch (e) {
+        console.error('Failed to save tasks:', e)
+      }
     }
   }
 
