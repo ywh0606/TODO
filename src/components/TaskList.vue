@@ -31,6 +31,7 @@ function onTaskDrop(draggedId, targetTaskId) {
   flex: 1;
   overflow-y: auto;
   padding: 4px 0;
+  position: relative;
 }
 
 .empty-state {
@@ -42,6 +43,10 @@ function onTaskDrop(draggedId, targetTaskId) {
 .task-enter-active,
 .task-leave-active {
   transition: all 0.3s ease;
+}
+
+.task-leave-active {
+  position: absolute;
 }
 
 .task-enter-from {
