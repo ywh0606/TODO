@@ -3,11 +3,13 @@
     <div v-if="store.filteredTasks.length === 0" class="empty-state">
       <p>暂无任务</p>
     </div>
-    <TaskItem
-      v-for="task in store.filteredTasks"
-      :key="task.id"
-      :task="task"
-    />
+    <TransitionGroup name="task">
+      <TaskItem
+        v-for="task in store.filteredTasks"
+        :key="task.id"
+        :task="task"
+      />
+    </TransitionGroup>
   </div>
 </template>
 
@@ -28,6 +30,21 @@ const store = useTaskStore()
 .empty-state {
   text-align: center;
   padding: 40px 0;
-  color: #9E9E9E;
+  color: var(--color-text-muted);
+}
+
+.task-enter-active,
+.task-leave-active {
+  transition: all 0.3s ease;
+}
+
+.task-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.task-leave-to {
+  opacity: 0;
+  transform: translateX(10px);
 }
 </style>
