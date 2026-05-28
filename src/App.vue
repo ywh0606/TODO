@@ -44,12 +44,12 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #EEEEEE;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .app-header h1 {
   font-size: 24px;
-  color: #5D4037;
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -60,17 +60,18 @@ onMounted(() => {
 
 .stat {
   padding: 4px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   font-size: 12px;
+  font-weight: 500;
 }
 
 .stat.pending {
-  background: #FFF3E0;
-  color: #E65100;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .stat.completed {
-  background: #E8F5E9;
-  color: #2E7D32;
+  background: #D1FAE5;
+  color: var(--color-success);
 }
 </style>
