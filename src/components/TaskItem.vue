@@ -60,27 +60,46 @@ const formattedDate = computed(() => {
   display: flex;
   align-items: center;
   padding: 14px;
-  background: #FAFAFA;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
   margin-bottom: 8px;
-  border: 1px solid #EEEEEE;
-  transition: all 0.2s;
+  border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .task-item:hover {
-  border-color: #E0E0E0;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--color-primary-light);
 }
 
 .task-item.completed {
   opacity: 0.6;
 }
 
+.task-item.completed .task-title {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
 .checkbox {
   width: 18px;
   height: 18px;
-  accent-color: #FF8A65;
+  accent-color: var(--color-primary);
   margin-right: 12px;
   cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.checkbox:checked {
+  animation: checkmark 0.3s ease;
+}
+
+@keyframes checkmark {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .task-content {
@@ -89,12 +108,8 @@ const formattedDate = computed(() => {
 
 .task-title {
   font-size: 15px;
-  color: #3E2723;
-}
-
-.completed .task-title {
-  text-decoration: line-through;
-  color: #9E9E9E;
+  color: var(--color-text);
+  transition: color 0.2s;
 }
 
 .task-meta {
@@ -107,38 +122,39 @@ const formattedDate = computed(() => {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11px;
+  font-weight: 500;
 }
 
 .priority-tag.high {
-  background: #FFEBEE;
-  color: #C62828;
+  background: #FEE2E2;
+  color: var(--color-danger);
 }
 
 .priority-tag.medium {
-  background: #FFF8E1;
-  color: #F57F17;
+  background: #FEF3C7;
+  color: var(--color-warning);
 }
 
 .priority-tag.low {
-  background: #F5F5F5;
-  color: #9E9E9E;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
 }
 
 .due-date {
-  color: #9E9E9E;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .delete-btn {
   background: none;
   border: none;
-  color: #BDBDBD;
+  color: var(--color-text-muted);
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   opacity: 0;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .task-item:hover .delete-btn {
@@ -146,7 +162,7 @@ const formattedDate = computed(() => {
 }
 
 .delete-btn:hover {
-  color: #E53935;
-  background: #FFEBEE;
+  color: var(--color-danger);
+  background: #FEE2E2;
 }
 </style>
