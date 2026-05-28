@@ -8,6 +8,7 @@
         v-for="task in store.filteredTasks"
         :key="task.id"
         :task="task"
+        @drop="onTaskDrop($event, task.id)"
       />
     </TransitionGroup>
   </div>
@@ -18,6 +19,11 @@ import { useTaskStore } from '../stores/taskStore'
 import TaskItem from './TaskItem.vue'
 
 const store = useTaskStore()
+
+function onTaskDrop(draggedId, targetTaskId) {
+  if (!draggedId || draggedId === targetTaskId) return
+  store.reorderTask(draggedId, targetTaskId)
+}
 </script>
 
 <style scoped>
