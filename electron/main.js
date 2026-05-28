@@ -1,32 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
-const fs = require('fs')
-
-let DATA_FILE
-
-function getDataFile() {
-  if (!DATA_FILE) {
-    DATA_FILE = path.join(app.getPath('userData'), 'tasks.json')
-  }
-  return DATA_FILE
-}
-
-function loadData() {
-  try {
-    const file = getDataFile()
-    if (fs.existsSync(file)) {
-      return JSON.parse(fs.readFileSync(file, 'utf-8'))
-    }
-  } catch (e) {
-    console.error('Failed to load data:', e)
-  }
-  return []
-}
-
-function saveData(tasks) {
-  const file = getDataFile()
-  fs.writeFileSync(file, JSON.stringify(tasks, null, 2))
-}
+const { init, loadData, saveData } = require('./persistence')
 
 let mainWindow
 
@@ -51,10 +25,17 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  init(app.getPath('userData'))
+
   ipcMain.handle('load-tasks', () => loadData())
   ipcMain.handle('save-tasks', (event, tasks) => {
-    saveData(tasks)
-    return true
+    try {
+      saveData(tasks)
+      return { success: true }
+    } catch (e) {
+      console.error('Failed to save tasks:', e)
+      return { success: false, error: e.message }
+    }
   })
 
   createWindow()
