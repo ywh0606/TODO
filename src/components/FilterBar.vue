@@ -32,21 +32,25 @@ const options = [
 
 .filter-btn {
   padding: 6px 14px;
-  background: #FFF3E0;
-  color: #E65100;
-  border: none;
-  border-radius: 16px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .filter-btn:hover {
-  background: #FFE0B2;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .filter-btn.active {
-  background: #FF8A65;
+  background: var(--color-primary);
   color: white;
+  border-color: var(--color-primary);
 }
 </style>

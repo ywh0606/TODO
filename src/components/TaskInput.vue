@@ -48,16 +48,18 @@ async function handleAdd() {
 .task-input input[type="text"] {
   width: 100%;
   padding: 12px 16px;
-  border: 1.5px solid #E0E0E0;
-  border-radius: 8px;
-  background: #FAFAFA;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
 }
 
 .task-input input[type="text"]:focus {
-  border-color: #FF8A65;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .input-options {
@@ -69,30 +71,39 @@ async function handleAdd() {
 .priority-select,
 .date-input {
   padding: 8px 12px;
-  border: 1.5px solid #E0E0E0;
-  border-radius: 6px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-size: 13px;
   outline: none;
-  background: #FAFAFA;
+  background: var(--color-surface);
+  font-family: inherit;
+  transition: border-color 0.2s;
 }
 
 .priority-select:focus,
 .date-input:focus {
-  border-color: #FF8A65;
+  border-color: var(--color-primary);
 }
 
 .add-btn {
   padding: 8px 20px;
-  background: #FF8A65;
+  background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
   font-size: 13px;
+  transition: all 0.2s ease;
 }
 
 .add-btn:hover {
-  background: #FF7043;
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.add-btn:active {
+  transform: translateY(0);
 }
 </style>
