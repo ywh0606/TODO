@@ -193,4 +193,58 @@ describe('persistence', () => {
       expect(loaded).toEqual(tasks)
     })
   })
+
+  // ============================================================
+  // loadHabits / saveHabits
+  // ============================================================
+  describe('loadHabits / saveHabits', () => {
+    it('文件不存在时返回默认结构', () => {
+      const result = persistence.loadHabits()
+      expect(result).toEqual({ habits: [], checkins: {} })
+    })
+
+    it('保存后读取数据一致', () => {
+      const data = {
+        habits: [{ id: 'h1', name: '阅读', icon: '📖', color: '#3B82F6', frequency: { type: 'daily' }, reminderTime: null, createdAt: '2026-01-01T00:00:00.000Z', order: 0 }],
+        checkins: { h1: ['2026-05-30', '2026-05-31'] }
+      }
+      persistence.saveHabits(data)
+      const loaded = persistence.loadHabits()
+      expect(loaded).toEqual(data)
+    })
+
+    it('覆盖已有文件内容', () => {
+      persistence.saveHabits({ habits: [{ id: 'old' }], checkins: {} })
+      persistence.saveHabits({ habits: [], checkins: {} })
+      expect(persistence.loadHabits()).toEqual({ habits: [], checkins: {} })
+    })
+  })
+
+  // ============================================================
+  // loadPomodoros / savePomodoros
+  // ============================================================
+  describe('loadPomodoros / savePomodoros', () => {
+    it('文件不存在时返回空对象', () => {
+      expect(persistence.loadPomodoros()).toEqual({})
+    })
+
+    it('保存后读取数据一致', () => {
+      const data = { '2026-05-30': 5, '2026-05-31': 3 }
+      persistence.savePomodoros(data)
+      expect(persistence.loadPomodoros()).toEqual(data)
+    })
+
+    it('覆盖已有文件内容', () => {
+      persistence.savePomodoros({ '2026-05-30': 5 })
+      persistence.savePomodoros({ '2026-05-31': 2 })
+      expect(persistence.loadPomodoros()).toEqual({ '2026-05-31': 2 })
+    })
+
+    it('特殊字符 round-trip 一致', () => {
+      // 确保日期字符串作为 key 可以正确读写
+      const data = { '2026-12-31': 10 }
+      persistence.savePomodoros(data)
+      expect(persistence.loadPomodoros()['2026-12-31']).toBe(10)
+    })
+  })
 })

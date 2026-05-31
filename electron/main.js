@@ -1,11 +1,113 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = require('electron')
 const path = require('path')
-const { init, loadData, saveData } = require('./persistence')
+const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros } = require('./persistence')
 
 let mainWindow
 let tray = null
 let isQuitting = false
 
+// ============================================================
+// Pomodoro timer state (runs in main process)
+// ============================================================
+const WORK_SECONDS = 25 * 60
+const BREAK_SECONDS = 5 * 60
+const LONG_BREAK_SECONDS = 15 * 60
+
+let pomodoroState = {
+  status: 'idle',   // 'idle' | 'work' | 'break' | 'long-break'
+  remainingSeconds: 0,
+  currentRound: 1
+}
+let pomodoroInterval = null
+
+function sendToRenderer(channel, data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, data)
+  }
+}
+
+function startPomodoroTimer() {
+  if (pomodoroInterval) clearInterval(pomodoroInterval)
+
+  pomodoroState.status = 'work'
+  pomodoroState.remainingSeconds = WORK_SECONDS
+  pomodoroState.currentRound = 1
+
+  pomodoroInterval = setInterval(() => {
+    pomodoroState.remainingSeconds--
+    sendToRenderer('pomodoro-tick', { ...pomodoroState })
+
+    if (pomodoroState.remainingSeconds <= 0) {
+      if (pomodoroState.status === 'work') {
+        // Work session completed
+        new Notification({ title: '专注完成！', body: '休息一下吧 🎉' }).show()
+        sendToRenderer('pomodoro-complete', { type: 'work-complete', round: pomodoroState.currentRound })
+
+        if (pomodoroState.currentRound % 4 === 0) {
+          pomodoroState.status = 'long-break'
+          pomodoroState.remainingSeconds = LONG_BREAK_SECONDS
+        } else {
+          pomodoroState.status = 'break'
+          pomodoroState.remainingSeconds = BREAK_SECONDS
+        }
+        pomodoroState.currentRound++
+      } else {
+        // Break completed
+        new Notification({ title: '休息结束！', body: '开始新的专注 🍅' }).show()
+        sendToRenderer('pomodoro-complete', { type: 'break-complete' })
+
+        pomodoroState.status = 'work'
+        pomodoroState.remainingSeconds = WORK_SECONDS
+      }
+    }
+  }, 1000)
+
+  sendToRenderer('pomodoro-tick', { ...pomodoroState })
+}
+
+function stopPomodoroTimer() {
+  if (pomodoroInterval) {
+    clearInterval(pomodoroInterval)
+    pomodoroInterval = null
+  }
+  pomodoroState = { status: 'idle', remainingSeconds: 0, currentRound: 1 }
+  sendToRenderer('pomodoro-tick', { ...pomodoroState })
+}
+
+// ============================================================
+// Habit reminders
+// ============================================================
+const habitReminderTimers = []
+
+function scheduleHabitReminders() {
+  habitReminderTimers.forEach(t => clearTimeout(t))
+  habitReminderTimers.length = 0
+
+  const data = loadHabits()
+  const now = new Date()
+
+  data.habits.forEach(habit => {
+    if (!habit.reminderTime) return
+
+    const [hours, minutes] = habit.reminderTime.split(':').map(Number)
+    const reminderDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
+    const delay = reminderDate.getTime() - now.getTime()
+
+    if (delay > 0) {
+      const timer = setTimeout(() => {
+        new Notification({
+          title: '习惯提醒',
+          body: `${habit.icon} ${habit.name} - 别忘了打卡！`
+        }).show()
+      }, delay)
+      habitReminderTimers.push(timer)
+    }
+  })
+}
+
+// ============================================================
+// Window & Tray
+// ============================================================
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 500,
@@ -67,9 +169,14 @@ function createTray() {
   })
 }
 
+// ============================================================
+// App lifecycle & IPC handlers
+// ============================================================
 app.whenReady().then(() => {
+  app.setAppUserModelId('com.todo.app')
   init(app.getPath('userData'))
 
+  // Tasks (existing)
   ipcMain.handle('load-tasks', () => loadData())
   ipcMain.handle('save-tasks', (event, tasks) => {
     try {
@@ -81,6 +188,44 @@ app.whenReady().then(() => {
     }
   })
 
+  // Habits
+  ipcMain.handle('load-habits', () => loadHabits())
+  ipcMain.handle('save-habits', (event, data) => {
+    try {
+      saveHabits(data)
+      scheduleHabitReminders()
+      return { success: true }
+    } catch (e) {
+      console.error('Failed to save habits:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  // Pomodoro persistence
+  ipcMain.handle('load-pomodoros', () => loadPomodoros())
+  ipcMain.handle('save-pomodoros', (event, data) => {
+    try {
+      savePomodoros(data)
+      return { success: true }
+    } catch (e) {
+      console.error('Failed to save pomodoros:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  // Pomodoro timer control
+  ipcMain.handle('pomodoro-start', () => {
+    startPomodoroTimer()
+    return { success: true }
+  })
+  ipcMain.handle('pomodoro-stop', () => {
+    stopPomodoroTimer()
+    return { success: true }
+  })
+
+  // Schedule habit reminders on start
+  scheduleHabitReminders()
+
   createWindow()
   createTray()
 
@@ -91,6 +236,10 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true
+  // Clean up pomodoro timer
+  if (pomodoroInterval) clearInterval(pomodoroInterval)
+  // Clean up habit reminders
+  habitReminderTimers.forEach(t => clearTimeout(t))
 })
 
 app.on('window-all-closed', () => {
