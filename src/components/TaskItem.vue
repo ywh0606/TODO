@@ -64,6 +64,8 @@
 import { ref, computed, nextTick } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
 import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
+dayjs.extend(isoWeek)
 
 const props = defineProps({
   task: {
@@ -98,7 +100,11 @@ const formattedDate = computed(() => {
 
   if (date.isSame(today, 'day')) return '今天'
   if (date.isSame(today.add(1, 'day'), 'day')) return '明天'
-  if (date.isSame(today, 'week')) return '本周' + ['日', '一', '二', '三', '四', '五', '六'][date.day()]
+
+  const weekday = ['日', '一', '二', '三', '四', '五', '六'][date.day()]
+
+  if (date.isSame(today, 'isoWeek')) return '本周' + weekday
+  if (date.isSame(today.add(1, 'week'), 'isoWeek')) return '下周' + weekday
 
   return date.format('M月D日')
 })
