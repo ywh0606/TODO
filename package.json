@@ -1,6 +1,6 @@
 {
   "name": "todo-app",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "简洁好用的桌面清单工具",
   "main": "electron/main.js",
   "scripts": {
