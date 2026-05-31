@@ -35,16 +35,8 @@ function createWindow() {
 }
 
 function createTray() {
-  // 生成 16x16 蓝色方块图标
-  const size = 16
-  const canvas = `data:image/svg+xml;base64,${Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-      <rect width="${size}" height="${size}" rx="2" fill="#3B82F6"/>
-      <path d="M4 8.5L7 11.5L12 5.5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`
-  ).toString('base64')}`
-
-  const icon = nativeImage.createFromDataURL(canvas)
+  const iconPath = path.join(__dirname, '../assets/tray-icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon)
   tray.setToolTip('我的清单')
 
