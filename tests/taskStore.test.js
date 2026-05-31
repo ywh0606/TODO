@@ -389,6 +389,30 @@ describe('filteredTasks', () => {
     expect(store.filteredTasks[0].completed).toBe(false)
     expect(store.filteredTasks[1].completed).toBe(true)
   })
+
+  it('filter 为 completed 时只返回已完成任务', async () => {
+    const store = useTaskStore()
+    await store.addTask('待办1', 'high', null)
+    await store.addTask('已完成1', 'low', null)
+    await store.addTask('待办2', 'medium', null)
+    await store.addTask('已完成2', 'high', null)
+
+    await store.toggleTask(store.tasks[1].id)
+    await store.toggleTask(store.tasks[3].id)
+    store.filter = 'completed'
+
+    expect(store.filteredTasks).toHaveLength(2)
+    expect(store.filteredTasks.every(t => t.completed)).toBe(true)
+  })
+
+  it('filter 为 completed 且无已完成任务时返回空数组', async () => {
+    const store = useTaskStore()
+    await store.addTask('待办', 'medium', null)
+
+    store.filter = 'completed'
+
+    expect(store.filteredTasks).toHaveLength(0)
+  })
 })
 
 describe('saveTasks 数据一致性', () => {
@@ -628,5 +652,61 @@ describe('loadTasks 数据迁移', () => {
     await store.loadTasks()
 
     expect(store.tasks[0].order).toBe(5)
+  })
+})
+
+// ============================================================
+// clearCompleted
+// ============================================================
+describe('clearCompleted', () => {
+  it('删除所有已完成任务，保留未完成任务', async () => {
+    const store = useTaskStore()
+    await store.addTask('待办1', 'high', null)
+    await store.addTask('已完成1', 'low', null)
+    await store.addTask('待办2', 'medium', null)
+    await store.addTask('已完成2', 'high', null)
+
+    await store.toggleTask(store.tasks[1].id)
+    await store.toggleTask(store.tasks[3].id)
+
+    await store.clearCompleted()
+
+    expect(store.tasks).toHaveLength(2)
+    expect(store.tasks.every(t => !t.completed)).toBe(true)
+  })
+
+  it('清除后调用 saveTasks 保存', async () => {
+    const store = useTaskStore()
+    await store.addTask('待办', 'medium', null)
+    await store.addTask('已完成', 'medium', null)
+    await store.toggleTask(store.tasks[1].id)
+    vi.clearAllMocks()
+
+    await store.clearCompleted()
+
+    expect(mockSaveTasks).toHaveBeenCalledTimes(1)
+  })
+
+  it('无已完成任务时调用安全', async () => {
+    const store = useTaskStore()
+    await store.addTask('待办', 'medium', null)
+    vi.clearAllMocks()
+
+    await store.clearCompleted()
+
+    expect(store.tasks).toHaveLength(1)
+    expect(mockSaveTasks).toHaveBeenCalledTimes(1)
+  })
+
+  it('所有任务已完成时清空列表', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务1', 'medium', null)
+    await store.addTask('任务2', 'medium', null)
+    await store.toggleTask(store.tasks[0].id)
+    await store.toggleTask(store.tasks[1].id)
+
+    await store.clearCompleted()
+
+    expect(store.tasks).toHaveLength(0)
   })
 })

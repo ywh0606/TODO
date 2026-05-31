@@ -19,7 +19,8 @@ const store = useTaskStore()
 const options = [
   { value: 'all', label: '全部' },
   { value: 'today', label: '今天' },
-  { value: 'upcoming', label: '即将到来' }
+  { value: 'upcoming', label: '即将到来' },
+  { value: 'completed', label: '已完成' }
 ]
 </script>
 

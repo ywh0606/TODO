@@ -11,6 +11,13 @@
         @drop="onTaskDrop($event, task.id)"
       />
     </TransitionGroup>
+    <button
+      v-if="store.filter === 'completed' && store.filteredTasks.length > 0"
+      class="clear-completed-btn"
+      @click="store.clearCompleted()"
+    >
+      清除已完成
+    </button>
   </div>
 </template>
 
@@ -38,6 +45,27 @@ function onTaskDrop(draggedId, targetTaskId) {
   text-align: center;
   padding: 40px 0;
   color: var(--color-text-muted);
+}
+
+.clear-completed-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.clear-completed-btn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: #FEF2F2;
 }
 
 .task-enter-active,

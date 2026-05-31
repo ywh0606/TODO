@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 
 export const useTaskStore = defineStore('tasks', () => {
   const tasks = ref([])
-  const filter = ref('all') // 'all' | 'today' | 'upcoming'
+  const filter = ref('all') // 'all' | 'today' | 'upcoming' | 'completed'
 
   // 加载任务
   async function loadTasks() {
@@ -114,6 +114,8 @@ export const useTaskStore = defineStore('tasks', () => {
         const due = dayjs(t.dueDate)
         return due.isAfter(now) && due.isBefore(now.add(7, 'day'))
       })
+    } else if (filter.value === 'completed') {
+      filtered = filtered.filter(t => t.completed)
     }
 
     // 按手动排序，已完成任务排底部
@@ -133,6 +135,12 @@ export const useTaskStore = defineStore('tasks', () => {
     return { total, completed, pending }
   })
 
+  // 清除所有已完成任务
+  async function clearCompleted() {
+    tasks.value = tasks.value.filter(t => !t.completed)
+    await saveTasks()
+  }
+
   return {
     tasks,
     filter,
@@ -143,6 +151,7 @@ export const useTaskStore = defineStore('tasks', () => {
     toggleTask,
     deleteTask,
     updateTask,
-    reorderTask
+    reorderTask,
+    clearCompleted
   }
 })
