@@ -1,25 +1,56 @@
 const path = require('path')
 const fs = require('fs')
 
-let DATA_FILE
+let DATA_DIR
 
 function init(userDataPath) {
-  DATA_FILE = path.join(userDataPath, 'tasks.json')
+  DATA_DIR = userDataPath
 }
 
-function loadData() {
+function loadFile(filename, defaultValue) {
+  const filePath = path.join(DATA_DIR, filename)
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'))
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
     }
   } catch (e) {
-    console.error('Failed to load data:', e)
+    console.error(`Failed to load ${filename}:`, e)
   }
-  return []
+  return defaultValue
+}
+
+function saveFile(filename, data) {
+  const filePath = path.join(DATA_DIR, filename)
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
+}
+
+// Existing API (backward compatible)
+function loadData() {
+  return loadFile('tasks.json', [])
 }
 
 function saveData(tasks) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(tasks, null, 2))
+  saveFile('tasks.json', tasks)
 }
 
-module.exports = { init, loadData, saveData }
+// New API
+function loadHabits() {
+  return loadFile('habits.json', { habits: [], checkins: {} })
+}
+
+function saveHabits(data) {
+  saveFile('habits.json', data)
+}
+
+function loadPomodoros() {
+  return loadFile('pomodoros.json', {})
+}
+
+function savePomodoros(data) {
+  saveFile('pomodoros.json', data)
+}
+
+module.exports = {
+  init, loadData, saveData,
+  loadHabits, saveHabits, loadPomodoros, savePomodoros
+}
