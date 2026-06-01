@@ -86,33 +86,31 @@ describe('petStore', () => {
   describe('leveling and evolution', () => {
     it('levels up when exp exceeds threshold', async () => {
       const store = usePetStore()
-      store.pet.expToNext = 10
-      store.pet.exp = 0
-      await store.grantReward('task', { priority: 'high' }) // 22 exp
+      // Level 1 → expToNext = 80 + 1*20 = 100
+      store.pet.exp = 95
+      await store.grantReward('task', { priority: 'high' }) // +23 exp = 118
       expect(store.pet.level).toBe(2)
-      expect(store.pet.exp).toBe(22 - 10) // leftover exp
+      expect(store.pet.exp).toBe(118 - 100) // leftover 18
     })
 
     it('evolves to stage 1 at level 5', async () => {
       const store = usePetStore()
+      // Level 4 → expToNext = 80 + 4*20 = 160
       store.pet.level = 4
-      store.pet.exp = 0
-      store.pet.expToNext = 5
-      await store.grantReward('pomodoro') // 12 exp, level up to 5
+      store.pet.exp = 150
+      await store.grantReward('pomodoro') // +12 exp = 162 > 160
       expect(store.pet.level).toBeGreaterThanOrEqual(5)
       expect(store.pet.stage).toBe(1)
     })
 
     it('does not evolve past stage 4', async () => {
       const store = usePetStore()
+      // Level 29 → expToNext = 80 + 29*20 = 660
       store.pet.level = 29
-      store.pet.exp = 0
-      store.pet.expToNext = 5
-      await store.grantReward('pomodoro')
-      // May have leveled to 30+
-      if (store.pet.level >= 30) {
-        expect(store.pet.stage).toBe(4)
-      }
+      store.pet.exp = 650
+      await store.grantReward('pomodoro') // +12 = 662 > 660, level to 30+
+      expect(store.pet.level).toBeGreaterThanOrEqual(30)
+      expect(store.pet.stage).toBe(4)
     })
   })
 
