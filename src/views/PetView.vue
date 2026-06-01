@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePetStore, STAGE_LEVELS } from '../stores/petStore'
 import { stageNames } from '../components/pet/petPixelData'
 import PixelCat from '../components/pet/PixelCat.vue'
