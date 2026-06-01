@@ -24,5 +24,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   // Pet persistence
   loadPet: () => ipcRenderer.invoke('load-pet'),
-  savePet: (data) => ipcRenderer.invoke('save-pet', data)
+  savePet: (data) => ipcRenderer.invoke('save-pet', data),
+  // Update
+  checkForUpdates: () => ipcRenderer.invoke('check-for-update'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateAvailable: (cb) => {
+    const handler = (_, info) => cb(info)
+    ipcRenderer.on('update-available', handler)
+  },
+  onUpdateNotAvailable: (cb) => {
+    const handler = () => cb()
+    ipcRenderer.on('update-not-available', handler)
+  },
+  onUpdateDownloadProgress: (cb) => {
+    const handler = (_, info) => cb(info)
+    ipcRenderer.on('update-download-progress', handler)
+  },
+  onUpdateDownloaded: (cb) => {
+    const handler = (_, info) => cb(info)
+    ipcRenderer.on('update-downloaded', handler)
+  },
+  onUpdateError: (cb) => {
+    const handler = (_, info) => cb(info)
+    ipcRenderer.on('update-error', handler)
+  }
 })

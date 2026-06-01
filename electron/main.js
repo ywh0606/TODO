@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = require('electron')
 const path = require('path')
 const { autoUpdater } = require('electron-updater')
 const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros, loadPetData, savePetData } = require('./persistence')
@@ -240,30 +240,63 @@ app.whenReady().then(() => {
   scheduleHabitReminders()
 
   // ============================================================
-  // Auto-update (GitHub Releases)
+  // Auto-update (GitHub Releases) — 手动更新模式
   // ============================================================
   if (process.env.NODE_ENV !== 'development') {
-    autoUpdater.checkForUpdates()
+    autoUpdater.autoDownload = false
 
-    autoUpdater.on('update-downloaded', (event) => {
-      if (!mainWindow || mainWindow.isDestroyed()) return
-      dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: '更新提示',
-        message: `发现新版本 ${event.version}`,
-        detail: '已下载完成，是否立即重启以更新？',
-        buttons: ['立即更新', '稍后'],
-        defaultId: 0,
-        cancelId: 1
-      }).then(({ response }) => {
-        if (response === 0) {
-          autoUpdater.quitAndInstall()
-        }
+    autoUpdater.on('update-available', (info) => {
+      sendToRenderer('update-available', {
+        version: info.version,
+        releaseNotes: info.releaseNotes || null
       })
+    })
+
+    autoUpdater.on('update-not-available', () => {
+      sendToRenderer('update-not-available')
+    })
+
+    autoUpdater.on('download-progress', (progress) => {
+      sendToRenderer('update-download-progress', {
+        percent: Math.round(progress.percent),
+        bytesPerSecond: progress.bytesPerSecond,
+        transferred: progress.transferred,
+        total: progress.total
+      })
+    })
+
+    autoUpdater.on('update-downloaded', (info) => {
+      sendToRenderer('update-downloaded', { version: info.version })
     })
 
     autoUpdater.on('error', (err) => {
       console.error('Auto-update error:', err)
+      sendToRenderer('update-error', { message: err.message })
+    })
+
+    autoUpdater.checkForUpdates()
+
+    ipcMain.handle('check-for-update', async () => {
+      try {
+        const result = await autoUpdater.checkForUpdates()
+        return { available: result?.isUpdateAvailable ?? false, version: result?.updateInfo?.version }
+      } catch (e) {
+        return { available: false, error: e.message }
+      }
+    })
+
+    ipcMain.handle('download-update', async () => {
+      try {
+        const downloadPromise = autoUpdater.downloadUpdate()
+        return { success: true }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    })
+
+    ipcMain.handle('install-update', () => {
+      autoUpdater.quitAndInstall()
+      return { success: true }
     })
   }
 
