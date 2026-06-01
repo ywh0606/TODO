@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
+import { usePetStore } from './petStore'
 
 export const useTaskStore = defineStore('tasks', () => {
   const tasks = ref([])
@@ -56,6 +57,13 @@ export const useTaskStore = defineStore('tasks', () => {
       task.completed = !task.completed
       task.updatedAt = dayjs().toISOString()
       await saveTasks()
+      // 宠物奖励
+      if (task.completed) {
+        try {
+          const petStore = usePetStore()
+          await petStore.grantReward('task', { priority: task.priority })
+        } catch (e) { console.warn('Pet reward failed:', e) }
+      }
     }
   }
 

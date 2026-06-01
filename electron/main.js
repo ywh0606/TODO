@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog } = require('electron')
 const path = require('path')
 const { autoUpdater } = require('electron-updater')
-const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros } = require('./persistence')
+const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros, loadPetData, savePetData } = require('./persistence')
 
 let mainWindow
 let tray = null
@@ -222,6 +222,18 @@ app.whenReady().then(() => {
   ipcMain.handle('pomodoro-stop', () => {
     stopPomodoroTimer()
     return { success: true }
+  })
+
+  // Pet persistence
+  ipcMain.handle('load-pet', () => loadPetData())
+  ipcMain.handle('save-pet', (event, data) => {
+    try {
+      savePetData(data)
+      return { success: true }
+    } catch (e) {
+      console.error('Failed to save pet:', e)
+      return { success: false, error: e.message }
+    }
   })
 
   // Schedule habit reminders on start

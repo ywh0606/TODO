@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
+import { usePetStore } from './petStore'
 
 export const useHabitStore = defineStore('habits', () => {
   const habits = ref([])
@@ -75,6 +76,12 @@ export const useHabitStore = defineStore('habits', () => {
     if (!checkins.value[id].includes(today)) {
       checkins.value[id].push(today)
       await saveHabits()
+      // 宠物奖励
+      try {
+        const petStore = usePetStore()
+        const streak = getStreak(id)
+        await petStore.grantReward('habit', { habitId: id, streak })
+      } catch (e) { console.warn('Pet reward failed:', e) }
     }
   }
 

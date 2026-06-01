@@ -19,7 +19,8 @@ const currentTab = ref('tasks')
 const tabs = [
   { key: 'tasks', icon: '📋', label: '清单' },
   { key: 'habits', icon: '✅', label: '习惯' },
-  { key: 'pomodoro', icon: '🍅', label: '番茄钟' }
+  { key: 'pomodoro', icon: '🍅', label: '番茄钟' },
+  { key: 'pet', icon: '🐱', label: '伙伴' }
 ]
 
 const emit = defineEmits(['change'])

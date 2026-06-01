@@ -21,5 +21,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPomodoroComplete: (cb) => {
     const handler = (_, info) => cb(info)
     ipcRenderer.on('pomodoro-complete', handler)
-  }
+  },
+  // Pet persistence
+  loadPet: () => ipcRenderer.invoke('load-pet'),
+  savePet: (data) => ipcRenderer.invoke('save-pet', data)
 })

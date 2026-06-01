@@ -50,7 +50,17 @@ function savePomodoros(data) {
   saveFile('pomodoros.json', data)
 }
 
+// Pet
+function loadPetData() {
+  return loadFile('pet.json', null)
+}
+
+function savePetData(data) {
+  saveFile('pet.json', data)
+}
+
 module.exports = {
   init, loadData, saveData,
-  loadHabits, saveHabits, loadPomodoros, savePomodoros
+  loadHabits, saveHabits, loadPomodoros, savePomodoros,
+  loadPetData, savePetData
 }

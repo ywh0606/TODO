@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import dayjs from 'dayjs'
+import { usePetStore } from './petStore'
 
 export const usePomodoroStore = defineStore('pomodoro', () => {
   const status = ref('idle') // 'idle' | 'work' | 'break' | 'long-break'
@@ -57,6 +58,11 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
       const today = dayjs().format('YYYY-MM-DD')
       dailyHistory.value[today] = (dailyHistory.value[today] || 0) + 1
       await savePomodoros()
+      // 宠物奖励
+      try {
+        const petStore = usePetStore()
+        await petStore.grantReward('pomodoro')
+      } catch (e) { console.warn('Pet reward failed:', e) }
     }
   }
 
