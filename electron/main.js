@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = require('electron')
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, dialog } = require('electron')
 const path = require('path')
+const { autoUpdater } = require('electron-updater')
 const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros } = require('./persistence')
 
 let mainWindow
@@ -225,6 +226,34 @@ app.whenReady().then(() => {
 
   // Schedule habit reminders on start
   scheduleHabitReminders()
+
+  // ============================================================
+  // Auto-update (GitHub Releases)
+  // ============================================================
+  if (process.env.NODE_ENV !== 'development') {
+    autoUpdater.checkForUpdates()
+
+    autoUpdater.on('update-downloaded', (event) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: '更新提示',
+        message: `发现新版本 ${event.version}`,
+        detail: '已下载完成，是否立即重启以更新？',
+        buttons: ['立即更新', '稍后'],
+        defaultId: 0,
+        cancelId: 1
+      }).then(({ response }) => {
+        if (response === 0) {
+          autoUpdater.quitAndInstall()
+        }
+      })
+    })
+
+    autoUpdater.on('error', (err) => {
+      console.error('Auto-update error:', err)
+    })
+  }
 
   createWindow()
   createTray()
