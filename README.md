@@ -15,10 +15,6 @@
 - 💾 **数据持久化** - 本地JSON文件存储，数据不丢失
 - 🎨 **简洁界面** - 白色背景 + 橙色主题，清新舒适
 
-## 截图
-
-![应用界面](<img width="1004" height="1416" alt="7f00eec151563338a4b9857f234579aa" src="https://github.com/user-attachments/assets/9216e17f-203e-46e8-ad51-81cdb4de28e2" />
-)
 
 ## 安装方式
 
