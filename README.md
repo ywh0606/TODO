@@ -17,7 +17,8 @@
 
 ## 截图
 
-![应用界面](screenshot.png)
+![应用界面](<img width="1004" height="1416" alt="7f00eec151563338a4b9857f234579aa" src="https://github.com/user-attachments/assets/9216e17f-203e-46e8-ad51-81cdb4de28e2" />
+)
 
 ## 安装方式
 
