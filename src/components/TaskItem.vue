@@ -2,7 +2,7 @@
   <div
     ref="taskItemRef"
     class="task-item"
-    :class="{ completed: task.completed, editing: isEditing, 'drag-over': isDragOver }"
+    :class="{ completed: task.completed, editing: isEditing, 'drag-over': isDragOver, overdue: isOverdue }"
     :draggable="isDraggable"
     @dragstart="onDragStart"
     @mouseup="onMouseUp"
@@ -24,9 +24,10 @@
         <span class="priority-tag" :class="task.priority">
           {{ priorityLabel }}
         </span>
-        <span v-if="task.dueDate" class="due-date">
+        <span v-if="task.dueDate" class="due-date" :class="{ overdue: isOverdue }">
           截止: {{ formattedDate }}
         </span>
+        <span v-if="reminderLabel" class="reminder-tag">{{ reminderLabel }}</span>
       </div>
     </div>
     <div class="task-edit" v-else ref="editContainerRef">
@@ -52,6 +53,27 @@
           @mousedown.stop
           @blur="saveEdit"
         />
+        <input
+          type="time"
+          v-model="editDueTime"
+          class="edit-time"
+          @mousedown.stop
+          @blur="saveEdit"
+        />
+        <select
+          v-model="editReminder"
+          class="edit-reminder"
+          :disabled="!canEditReminder"
+          @mousedown.stop
+          @blur="saveEdit"
+        >
+          <option value="">不提醒</option>
+          <option value="at-due-time">准时提醒</option>
+          <option value="5m">提前 5 分钟</option>
+          <option value="30m">提前 30 分钟</option>
+          <option value="1h">提前 1 小时</option>
+          <option value="1d">提前 1 天</option>
+        </select>
       </div>
     </div>
     <button @click.stop="store.deleteTask(task.id)" class="delete-btn">
@@ -63,9 +85,8 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
+import { formatDueDateTime, formatReminderLabel, isDisplayOverdue } from '../utils/taskDisplay'
 import dayjs from 'dayjs'
-import isoWeek from 'dayjs/plugin/isoWeek'
-dayjs.extend(isoWeek)
 
 const props = defineProps({
   task: {
@@ -82,6 +103,8 @@ const isEditing = ref(false)
 const editTitle = ref('')
 const editPriority = ref('medium')
 const editDueDate = ref('')
+const editDueTime = ref('')
+const editReminder = ref('')
 const titleInput = ref(null)
 const taskItemRef = ref(null)
 const editContainerRef = ref(null)
@@ -93,27 +116,21 @@ const priorityLabel = computed(() => {
   return labels[props.task.priority]
 })
 
-const formattedDate = computed(() => {
-  if (!props.task.dueDate) return ''
-  const date = dayjs(props.task.dueDate)
-  const today = dayjs()
+const formattedDate = computed(() => formatDueDateTime(props.task))
 
-  if (date.isSame(today, 'day')) return '今天'
-  if (date.isSame(today.add(1, 'day'), 'day')) return '明天'
+const reminderLabel = computed(() => formatReminderLabel(props.task.reminder))
 
-  const weekday = ['日', '一', '二', '三', '四', '五', '六'][date.day()]
+const isOverdue = computed(() => isDisplayOverdue(props.task))
 
-  if (date.isSame(today, 'isoWeek')) return '本周' + weekday
-  if (date.isSame(today.add(1, 'week'), 'isoWeek')) return '下周' + weekday
-
-  return date.format('M月D日')
-})
+const canEditReminder = computed(() => Boolean(editDueDate.value && editDueTime.value))
 
 function startEdit() {
   if (props.task.completed) return
   editTitle.value = props.task.title
   editPriority.value = props.task.priority
   editDueDate.value = props.task.dueDate ? dayjs(props.task.dueDate).format('YYYY-MM-DD') : ''
+  editDueTime.value = props.task.dueTime || ''
+  editReminder.value = props.task.reminder || ''
   isEditing.value = true
   nextTick(() => {
     titleInput.value?.focus()
@@ -130,10 +147,13 @@ function saveEdit() {
     if (editContainerRef.value?.contains(active)) return
     const title = editTitle.value.trim()
     // 空标题时回退为原标题，但仍保存优先级和日期的修改
+    const dueTime = editDueDate.value && editDueTime.value ? editDueTime.value : null
     store.updateTask(props.task.id, {
       title: title || props.task.title,
       priority: editPriority.value,
-      dueDate: editDueDate.value ? dayjs(editDueDate.value).toISOString() : null
+      dueDate: editDueDate.value ? dayjs(editDueDate.value).toISOString() : null,
+      dueTime,
+      reminder: dueTime ? (editReminder.value || null) : null
     })
     isEditing.value = false
   }, 150)
@@ -203,6 +223,11 @@ function onDragEnd(e) {
 
 .task-item.completed {
   opacity: 0.6;
+}
+
+.task-item.overdue:not(.completed) {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.12), var(--shadow-sm);
 }
 
 .task-item.completed .task-title {
@@ -282,6 +307,8 @@ function onDragEnd(e) {
 
 .task-meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-top: 4px;
 }
@@ -313,6 +340,20 @@ function onDragEnd(e) {
   font-size: 12px;
 }
 
+.due-date.overdue {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.reminder-tag {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #DBEAFE;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .task-edit {
   flex: 1;
   display: flex;
@@ -338,11 +379,14 @@ function onDragEnd(e) {
 
 .edit-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .edit-priority,
-.edit-date {
+.edit-date,
+.edit-time,
+.edit-reminder {
   padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -352,8 +396,23 @@ function onDragEnd(e) {
   outline: none;
 }
 
+.edit-time {
+  width: 92px;
+}
+
+.edit-reminder {
+  min-width: 112px;
+}
+
+.edit-reminder:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .edit-priority:focus,
-.edit-date:focus {
+.edit-date:focus,
+.edit-time:focus,
+.edit-reminder:focus {
   border-color: var(--color-primary);
 }
 
