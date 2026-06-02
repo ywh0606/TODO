@@ -17,25 +17,60 @@
         type="date"
         class="date-input"
       />
+      <input
+        v-model="dueTime"
+        type="time"
+        class="time-input"
+      />
+      <select
+        v-model="reminder"
+        class="reminder-select"
+        :disabled="!canSetReminder"
+      >
+        <option :value="null">不提醒</option>
+        <option value="at-due-time">到期时</option>
+        <option value="5m">提前5分钟</option>
+        <option value="30m">提前30分钟</option>
+        <option value="1h">提前1小时</option>
+        <option value="1d">提前1天</option>
+      </select>
       <button @click="handleAdd" class="add-btn">添加</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
 
 const store = useTaskStore()
 const title = ref('')
 const priority = ref('medium')
 const dueDate = ref('')
+const dueTime = ref('')
+const reminder = ref(null)
+
+const canSetReminder = computed(() => Boolean(dueDate.value && dueTime.value))
+
+watch(canSetReminder, (canSet) => {
+  if (!canSet) {
+    reminder.value = null
+  }
+})
 
 async function handleAdd() {
   if (!title.value.trim()) return
-  await store.addTask(title.value.trim(), priority.value, dueDate.value || null)
+  await store.addTask(
+    title.value.trim(),
+    priority.value,
+    dueDate.value || null,
+    dueDate.value && dueTime.value ? dueTime.value : null,
+    dueDate.value && dueTime.value ? reminder.value : null
+  )
   title.value = ''
   dueDate.value = ''
+  dueTime.value = ''
+  reminder.value = null
   priority.value = 'medium'
 }
 </script>
@@ -64,12 +99,15 @@ async function handleAdd() {
 
 .input-options {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }
 
 .priority-select,
-.date-input {
+.date-input,
+.time-input,
+.reminder-select {
   padding: 8px 12px;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -81,8 +119,17 @@ async function handleAdd() {
 }
 
 .priority-select:focus,
-.date-input:focus {
+.date-input:focus,
+.time-input:focus,
+.reminder-select:focus {
   border-color: var(--color-primary);
+}
+
+.reminder-select:disabled {
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .add-btn {
