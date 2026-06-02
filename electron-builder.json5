@@ -21,7 +21,8 @@
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
-    "createDesktopShortcut": true
+    "createDesktopShortcut": true,
+    "artifactName": "Todo.App.Setup.\${version}.\${ext}"
   },
   "publish": {
     "provider": "github",
