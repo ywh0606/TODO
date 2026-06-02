@@ -144,6 +144,28 @@ describe('persistence', () => {
       expect(loaded).toEqual(tasks)
     })
 
+    it('提醒字段 round-trip 一致', () => {
+      const tasks = [
+        {
+          id: '1',
+          title: '提交日报',
+          completed: false,
+          priority: 'high',
+          dueDate: '2026-06-02T00:00:00.000Z',
+          dueTime: '18:30',
+          reminder: '30m',
+          remindedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }
+      ]
+
+      persistence.saveData(tasks)
+      const loaded = persistence.loadData()
+
+      expect(loaded).toEqual(tasks)
+    })
+
     it('多次 saveData → loadData 最终一致', () => {
       const batch1 = [
         { id: '1', title: '批次1', completed: false, priority: 'medium', dueDate: null, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }

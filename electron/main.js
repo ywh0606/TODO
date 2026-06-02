@@ -2,10 +2,21 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = r
 const path = require('path')
 const { autoUpdater } = require('electron-updater')
 const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros, loadPetData, savePetData } = require('./persistence')
+const {
+  calculateReminderTime,
+  canScheduleTaskReminder,
+  getNextReminderTimeoutDelay,
+  isSameReminderTimestamp,
+  isTaskOverdue,
+  formatTaskReminderNotification,
+  formatOverdueNotification
+} = require('./taskReminders')
 
 let mainWindow
 let tray = null
 let isQuitting = false
+let taskReminderTimers = new Map()
+let overdueReminderShownForWindowSession = false
 
 // ============================================================
 // Pomodoro timer state (runs in main process)
@@ -76,6 +87,75 @@ function stopPomodoroTimer() {
 }
 
 // ============================================================
+// Task reminders
+// ============================================================
+function clearTaskReminderTimers() {
+  taskReminderTimers.forEach(timer => clearTimeout(timer))
+  taskReminderTimers.clear()
+}
+
+function showNotificationSafe(options) {
+  if (!Notification.isSupported()) {
+    console.warn('Electron Notification is not supported on this platform.')
+    return false
+  }
+
+  new Notification(options).show()
+  return true
+}
+
+function scheduleTaskReminders() {
+  clearTaskReminderTimers()
+
+  const tasks = loadData()
+  const now = new Date()
+
+  tasks.forEach(task => {
+    if (!canScheduleTaskReminder(task, now)) return
+
+    const reminderTime = calculateReminderTime(task.dueDate, task.dueTime, task.reminder)
+    const reminderTimestamp = reminderTime.getTime()
+    const delay = getNextReminderTimeoutDelay(reminderTimestamp, now.getTime())
+
+    const timer = setTimeout(() => {
+      taskReminderTimers.delete(task.id)
+
+      const latestTasks = loadData()
+      const latestTask = latestTasks.find(item => item.id === task.id)
+
+      const now = new Date()
+      if (!latestTask || latestTask.completed || latestTask.remindedAt) return
+
+      const latestReminderTime = calculateReminderTime(latestTask.dueDate, latestTask.dueTime, latestTask.reminder)
+      if (!latestReminderTime) return
+
+      if (!isSameReminderTimestamp(latestReminderTime, reminderTimestamp) || latestReminderTime.getTime() > now.getTime()) {
+        scheduleTaskReminders()
+        return
+      }
+
+      const shown = showNotificationSafe(formatTaskReminderNotification(latestTask))
+      if (!shown) return
+
+      latestTask.remindedAt = new Date().toISOString()
+      saveData(latestTasks)
+    }, delay)
+
+    taskReminderTimers.set(task.id, timer)
+  })
+}
+
+function checkOverdueTasksOnceForWindowSession() {
+  if (overdueReminderShownForWindowSession) return
+
+  const overdueTasks = loadData().filter(task => isTaskOverdue(task, new Date()))
+  if (overdueTasks.length === 0) return
+
+  showNotificationSafe(formatOverdueNotification(overdueTasks))
+  overdueReminderShownForWindowSession = true
+}
+
+// ============================================================
 // Habit reminders
 // ============================================================
 const habitReminderTimers = []
@@ -125,6 +205,7 @@ function createWindow() {
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
       e.preventDefault()
+      overdueReminderShownForWindowSession = false
       mainWindow.hide()
     }
   })
@@ -149,6 +230,7 @@ function createTray() {
       click: () => {
         mainWindow.show()
         mainWindow.focus()
+        checkOverdueTasksOnceForWindowSession()
       }
     },
     { type: 'separator' },
@@ -167,6 +249,7 @@ function createTray() {
   tray.on('click', () => {
     mainWindow.show()
     mainWindow.focus()
+    checkOverdueTasksOnceForWindowSession()
   })
 }
 
@@ -182,6 +265,7 @@ app.whenReady().then(() => {
   ipcMain.handle('save-tasks', (event, tasks) => {
     try {
       saveData(tasks)
+      scheduleTaskReminders()
       return { success: true }
     } catch (e) {
       console.error('Failed to save tasks:', e)
@@ -236,8 +320,10 @@ app.whenReady().then(() => {
     }
   })
 
-  // Schedule habit reminders on start
+  // Schedule reminders on start
   scheduleHabitReminders()
+  scheduleTaskReminders()
+  checkOverdueTasksOnceForWindowSession()
 
   // ============================================================
   // Auto-update (GitHub Releases) — 手动更新模式
@@ -314,6 +400,8 @@ app.on('before-quit', () => {
   if (pomodoroInterval) clearInterval(pomodoroInterval)
   // Clean up habit reminders
   habitReminderTimers.forEach(t => clearTimeout(t))
+  // Clean up task reminders
+  clearTaskReminderTimers()
 })
 
 app.on('window-all-closed', () => {
