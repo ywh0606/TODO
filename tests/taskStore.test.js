@@ -13,7 +13,8 @@ beforeEach(() => {
 
   window.electronAPI = {
     saveTasks: mockSaveTasks,
-    loadTasks: mockLoadTasks
+    loadTasks: mockLoadTasks,
+    savePet: vi.fn().mockResolvedValue({ success: true })
   }
 })
 
@@ -51,6 +52,40 @@ describe('addTask', () => {
     expect(Object.getPrototypeOf(savedData)).toBe(Array.prototype)
   })
 
+  it('添加任务时保存 dueTime、reminder，并初始化 remindedAt 为 null', async () => {
+    const store = useTaskStore()
+    await store.addTask('提醒任务', 'medium', '2026-06-01', '09:30', '5m')
+
+    expect(store.tasks[0].dueTime).toBe('09:30')
+    expect(store.tasks[0].reminder).toBe('5m')
+    expect(store.tasks[0].remindedAt).toBeNull()
+  })
+
+  it('没有具体时间时 reminder 自动保存为 null', async () => {
+    const store = useTaskStore()
+    await store.addTask('无具体时间提醒', 'medium', '2026-06-01', null, '5m')
+
+    expect(store.tasks[0].dueTime).toBeNull()
+    expect(store.tasks[0].reminder).toBeNull()
+  })
+
+  it('未知 reminder 添加时保存为 null', async () => {
+    const store = useTaskStore()
+    await store.addTask('未知提醒', 'medium', '2026-06-01', '09:30', '10m')
+
+    expect(store.tasks[0].dueTime).toBe('09:30')
+    expect(store.tasks[0].reminder).toBeNull()
+  })
+
+  it('没有 dueDate 时不会保留 dueTime、reminder、remindedAt', async () => {
+    const store = useTaskStore()
+    await store.addTask('无日期提醒', 'medium', null, '09:30', '5m')
+
+    expect(store.tasks[0].dueDate).toBeNull()
+    expect(store.tasks[0].dueTime).toBeNull()
+    expect(store.tasks[0].reminder).toBeNull()
+    expect(store.tasks[0].remindedAt).toBeNull()
+  })
   it('任务带有有效的 UUID 格式 id', async () => {
     const store = useTaskStore()
     await store.addTask('测试ID', 'medium', null)
@@ -156,6 +191,35 @@ describe('loadTasks', () => {
 
     expect(store.tasks).toHaveLength(3)
   })
+  it('加载旧数据时清理没有 dueDate 或 dueTime 的提醒元数据', async () => {
+    mockLoadTasks.mockResolvedValue([
+      { id: '1', title: '无日期', completed: false, priority: 'medium', dueDate: null, dueTime: '09:00', reminder: '5m', remindedAt: '2026-06-01T08:55:00.000Z' },
+      { id: '2', title: '无时间', completed: false, priority: 'medium', dueDate: '2026-06-01T00:00:00.000Z', dueTime: null, reminder: '30m', remindedAt: '2026-06-01T08:30:00.000Z' }
+    ])
+
+    const store = useTaskStore()
+    await store.loadTasks()
+
+    expect(store.tasks[0].dueTime).toBeNull()
+    expect(store.tasks[0].reminder).toBeNull()
+    expect(store.tasks[0].remindedAt).toBeNull()
+    expect(store.tasks[1].dueTime).toBeNull()
+    expect(store.tasks[1].reminder).toBeNull()
+    expect(store.tasks[1].remindedAt).toBeNull()
+  })
+
+  it('加载旧数据时清理非法 reminder', async () => {
+    mockLoadTasks.mockResolvedValue([
+      { id: '1', title: '非法提醒', completed: false, priority: 'medium', dueDate: '2026-06-01T00:00:00.000Z', dueTime: '09:00', reminder: '10m', remindedAt: '2026-06-01T08:50:00.000Z' }
+    ])
+
+    const store = useTaskStore()
+    await store.loadTasks()
+
+    expect(store.tasks[0].dueTime).toBe('09:00')
+    expect(store.tasks[0].reminder).toBeNull()
+    expect(store.tasks[0].remindedAt).toBeNull()
+  })
 })
 
 describe('toggleTask', () => {
@@ -195,8 +259,19 @@ describe('toggleTask', () => {
     await store.addTask('时间更新', 'medium', null)
     const originalUpdatedAt = store.tasks[0].updatedAt
 
-    // 等待 1ms 确保时间戳不同
-    await new Promise(r => setTimeout(r, 1))
+    // 等待到下一毫秒，避免 Date/Dayjs 在同一毫秒内生成相同 ISO 字符串
+    const waitForNextMillisecond = () => new Promise((resolve) => {
+      const start = Date.now()
+      const poll = () => {
+        if (Date.now() !== start) {
+          resolve()
+        } else {
+          setTimeout(poll, 0)
+        }
+      }
+      poll()
+    })
+    await waitForNextMillisecond()
     await store.toggleTask(store.tasks[0].id)
 
     expect(store.tasks[0].updatedAt).not.toBe(originalUpdatedAt)
@@ -276,7 +351,7 @@ describe('边界条件', () => {
   })
 
   it('saveTasks 失败时不会抛出异常（静默处理）', async () => {
-    mockSaveTasks.mockRejectedValue(new Error('写入失败'))
+    mockSaveTasks.mockRejectedValueOnce(new Error('写入失败'))
 
     const store = useTaskStore()
     await expect(store.addTask('保存失败测试', 'medium', null)).resolves.not.toThrow()
@@ -530,6 +605,88 @@ describe('updateTask', () => {
 
     await expect(store.updateTask('non-existent', { title: '新' })).resolves.not.toThrow()
     expect(store.tasks[0].title).toBe('任务')
+  })
+
+  it('允许更新 dueTime、reminder、remindedAt', async () => {
+    const store = useTaskStore()
+    await store.addTask('提醒任务', 'medium', '2026-06-01', '09:00', null)
+    const id = store.tasks[0].id
+
+    await store.updateTask(id, {
+      dueTime: '18:45',
+      reminder: '30m',
+      remindedAt: '2026-06-01T10:00:00.000Z'
+    })
+
+    expect(store.tasks[0].dueTime).toBe('18:45')
+    expect(store.tasks[0].reminder).toBe('30m')
+    expect(store.tasks[0].remindedAt).toBe('2026-06-01T10:00:00.000Z')
+  })
+
+  it('修改 dueDate 时清空 remindedAt', async () => {
+    const store = useTaskStore()
+    await store.addTask('提醒任务', 'medium', '2026-06-01', '09:00', '10m')
+    const id = store.tasks[0].id
+    await store.updateTask(id, { remindedAt: '2026-06-01T08:50:00.000Z' })
+
+    await store.updateTask(id, { dueDate: '2026-06-02T00:00:00.000Z' })
+
+    expect(store.tasks[0].remindedAt).toBeNull()
+  })
+
+  it('修改 dueTime 时清空 remindedAt', async () => {
+    const store = useTaskStore()
+    await store.addTask('提醒任务', 'medium', '2026-06-01', '09:00', '10m')
+    const id = store.tasks[0].id
+    await store.updateTask(id, { remindedAt: '2026-06-01T08:50:00.000Z' })
+
+    await store.updateTask(id, { dueTime: '10:00' })
+
+    expect(store.tasks[0].remindedAt).toBeNull()
+  })
+
+  it('修改 reminder 时清空 remindedAt', async () => {
+    const store = useTaskStore()
+    await store.addTask('提醒任务', 'medium', '2026-06-01', '09:00', '10m')
+    const id = store.tasks[0].id
+    await store.updateTask(id, { remindedAt: '2026-06-01T08:50:00.000Z' })
+
+    await store.updateTask(id, { reminder: '30m' })
+
+    expect(store.tasks[0].remindedAt).toBeNull()
+  })
+
+  it('清空 dueTime 时同时清空 reminder', async () => {
+    const store = useTaskStore()
+    await store.addTask('提醒任务', 'medium', '2026-06-01', '09:00', '10m')
+    const id = store.tasks[0].id
+
+    await store.updateTask(id, { dueTime: null })
+
+    expect(store.tasks[0].dueTime).toBeNull()
+    expect(store.tasks[0].reminder).toBeNull()
+  })
+
+  it('没有 dueTime 时不能设置非空 reminder', async () => {
+    const store = useTaskStore()
+    await store.addTask('无时间任务', 'medium', '2026-06-01', null, null)
+    const id = store.tasks[0].id
+
+    await store.updateTask(id, { reminder: '1h' })
+
+    expect(store.tasks[0].dueTime).toBeNull()
+    expect(store.tasks[0].reminder).toBeNull()
+  })
+
+  it('修改提醒字段时尊重显式传入的 remindedAt', async () => {
+    const store = useTaskStore()
+    await store.addTask('提醒任务', 'medium', '2026-06-01', '09:00', '10m')
+    const id = store.tasks[0].id
+    const explicitRemindedAt = '2026-06-01T09:30:00.000Z'
+
+    await store.updateTask(id, { dueTime: '10:00', remindedAt: explicitRemindedAt })
+
+    expect(store.tasks[0].remindedAt).toBe(explicitRemindedAt)
   })
 
   it('白名单外的字段不会被更新', async () => {

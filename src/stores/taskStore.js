@@ -4,6 +4,33 @@ import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
 import { usePetStore } from './petStore'
 
+const SUPPORTED_REMINDERS = new Set(['at-due-time', '5m', '30m', '1h', '1d'])
+
+function normalizeReminder(reminder) {
+  return SUPPORTED_REMINDERS.has(reminder) ? reminder : null
+}
+
+function normalizeTaskReminderMetadata(task) {
+  if (!task.dueDate) {
+    task.dueTime = null
+    task.reminder = null
+    task.remindedAt = null
+    return
+  }
+
+  if (!task.dueTime) {
+    task.dueTime = null
+    task.reminder = null
+    task.remindedAt = null
+    return
+  }
+
+  task.reminder = normalizeReminder(task.reminder)
+  if (!task.reminder) {
+    task.remindedAt = null
+  }
+}
+
 export const useTaskStore = defineStore('tasks', () => {
   const tasks = ref([])
   const filter = ref('all') // 'all' | 'today' | 'upcoming' | 'completed'
@@ -18,6 +45,7 @@ export const useTaskStore = defineStore('tasks', () => {
       if (task.order === undefined) {
         task.order = index
       }
+      normalizeTaskReminderMetadata(task)
     })
   }
 
@@ -33,16 +61,22 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   // 添加任务
-  async function addTask(title, priority = 'medium', dueDate = null) {
+  async function addTask(title, priority = 'medium', dueDate = null, dueTime = null, reminder = null) {
     const maxOrder = tasks.value.length > 0
       ? Math.max(...tasks.value.map(t => t.order ?? 0))
       : -1
+    const normalizedDueDate = dueDate ? dayjs(dueDate).toISOString() : null
+    const normalizedDueTime = normalizedDueDate && dueTime ? dueTime : null
+    const normalizedReminder = normalizedDueTime ? normalizeReminder(reminder) : null
     tasks.value.push({
       id: uuidv4(),
       title,
       completed: false,
       priority,
-      dueDate: dueDate ? dayjs(dueDate).toISOString() : null,
+      dueDate: normalizedDueDate,
+      dueTime: normalizedDueTime,
+      reminder: normalizedReminder,
+      remindedAt: null,
       order: maxOrder + 1,
       createdAt: dayjs().toISOString(),
       updatedAt: dayjs().toISOString()
@@ -77,10 +111,30 @@ export const useTaskStore = defineStore('tasks', () => {
   async function updateTask(id, updates) {
     const task = tasks.value.find(t => t.id === id)
     if (task) {
-      const allowed = ['title', 'priority', 'dueDate']
+      const allowed = ['title', 'priority', 'dueDate', 'dueTime', 'reminder', 'remindedAt']
       const safeUpdates = Object.fromEntries(
         Object.entries(updates).filter(([k]) => allowed.includes(k))
       )
+      const reminderFieldsChanged = ['dueDate', 'dueTime', 'reminder'].some(
+        field => Object.prototype.hasOwnProperty.call(safeUpdates, field) && safeUpdates[field] !== task[field]
+      )
+      if (Object.prototype.hasOwnProperty.call(safeUpdates, 'reminder')) {
+        safeUpdates.reminder = normalizeReminder(safeUpdates.reminder)
+      }
+      const nextDueDate = Object.prototype.hasOwnProperty.call(safeUpdates, 'dueDate')
+        ? safeUpdates.dueDate
+        : task.dueDate
+      const nextDueTime = Object.prototype.hasOwnProperty.call(safeUpdates, 'dueTime')
+        ? safeUpdates.dueTime
+        : task.dueTime
+      if (!nextDueDate || !nextDueTime) {
+        safeUpdates.dueTime = null
+        safeUpdates.reminder = null
+        safeUpdates.remindedAt = null
+      }
+      if (reminderFieldsChanged && !Object.prototype.hasOwnProperty.call(safeUpdates, 'remindedAt')) {
+        safeUpdates.remindedAt = null
+      }
       Object.assign(task, safeUpdates, { updatedAt: dayjs().toISOString() })
       await saveTasks()
     }
