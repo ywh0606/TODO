@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Pet persistence
   loadPet: () => ipcRenderer.invoke('load-pet'),
   savePet: (data) => ipcRenderer.invoke('save-pet', data),
+  // Completion log
+  loadCompletionLog: () => ipcRenderer.invoke('load-completion-log'),
+  saveCompletionLog: (data) => ipcRenderer.invoke('save-completion-log', data),
   // Update
   checkForUpdates: () => ipcRenderer.invoke('check-for-update'),
   downloadUpdate: () => ipcRenderer.invoke('download-update'),

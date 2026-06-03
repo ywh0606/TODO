@@ -59,8 +59,18 @@ function savePetData(data) {
   saveFile('pet.json', data)
 }
 
+// Completion log
+function loadCompletionLog() {
+  return loadFile('completion-log.json', {})
+}
+
+function saveCompletionLog(data) {
+  saveFile('completion-log.json', data)
+}
+
 module.exports = {
   init, loadData, saveData,
   loadHabits, saveHabits, loadPomodoros, savePomodoros,
-  loadPetData, savePetData
+  loadPetData, savePetData,
+  loadCompletionLog, saveCompletionLog
 }

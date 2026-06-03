@@ -16,7 +16,9 @@ beforeEach(() => {
   setActivePinia(createPinia())
   window.electronAPI = {
     saveTasks: vi.fn().mockResolvedValue({ success: true }),
-    loadTasks: vi.fn().mockResolvedValue([])
+    loadTasks: vi.fn().mockResolvedValue([]),
+    loadCompletionLog: vi.fn().mockResolvedValue({}),
+    saveCompletionLog: vi.fn().mockResolvedValue({ success: true })
   }
 })
 
