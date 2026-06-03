@@ -5,6 +5,7 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Electron](https://img.shields.io/badge/electron-28-9feaf9)
 ![Vue](https://img.shields.io/badge/vue-3-42b883)
+![Version](https://img.shields.io/badge/version-1.4.0-orange)
 
 ## 功能特性
 
@@ -12,8 +13,9 @@
 
 - ✅ **添加、完成、删除任务** - 支持内联编辑、拖拽排序
 - 🎯 **优先级设置** - 高/中/低三级优先级，带颜色标识
-- 📅 **截止日期** - 支持相对时间显示（今天、明天、已过期）
+- 📅 **截止日期与时间** - 支持设置具体截止时间，相对时间显示（今天、明天、已逾期）
 - 🔍 **过滤视图** - 全部 / 今天 / 即将到来
+- 🔔 **任务提醒** - 支持准时提醒、提前 5 分钟 / 30 分钟 / 1 小时 / 1 天提醒，系统通知推送
 
 ### ✅ 习惯追踪
 
@@ -26,6 +28,13 @@
 - ⏱️ **专注计时** - 25分钟专注 + 5分钟休息，4轮后长休息
 - 📈 **周报统计** - 图表展示每日专注完成数
 - 🔔 **完成提醒** - 专注/休息结束时系统通知
+
+### 📊 统计面板
+
+- 📋 **任务完成趋势** - 7天/30天任务完成数折线图
+- ✅ **习惯打卡率** - 每日打卡完成百分比统计
+- 🍅 **番茄钟趋势** - 专注数量趋势与累计统计
+- 💡 **今日概览** - 任务完成数、待办数、打卡率一目了然
 
 ### 🐱 桌面宠物
 
@@ -40,7 +49,6 @@
 - 🔄 **自动更新** - 应用内检测新版本，一键下载安装
 - 📌 **系统托盘** - 关闭窗口最小化到托盘，不打扰工作
 - 🎨 **简洁界面** - 白色背景 + 橙色主题，清新舒适
-
 
 ## 安装方式
 
@@ -74,9 +82,10 @@ npm run electron:build
 ### 任务管理
 
 1. 在顶部输入框输入任务标题
-2. 选择优先级（高/中/低），可选设置截止日期
-3. 点击"添加"按钮或按回车键
-4. 拖拽任务左侧的 ⋮⋮ 手柄可调整顺序
+2. 选择优先级（高/中/低），可选设置截止日期与时间
+3. 可设置提醒时间（准时/提前5分钟/30分钟/1小时/1天）
+4. 点击"添加"按钮或按回车键
+5. 拖拽任务左侧的 ⋮⋮ 手柄可调整顺序
 
 ### 习惯追踪
 
@@ -90,6 +99,12 @@ npm run electron:build
 2. 专注期间计时器显示剩余时间，不可中断
 3. 专注结束后自动进入休息，周报图表记录历史
 
+### 统计面板
+
+1. 切换到「统计」标签页，查看整体数据概览
+2. 可切换 7 天 / 30 天时间范围
+3. 任务完成、习惯打卡率、番茄钟趋势三合一图表展示
+
 ### 桌面宠物
 
 1. 切换到「伙伴」标签页，查看你的宠物状态
@@ -98,6 +113,7 @@ npm run electron:build
 4. 宠物随等级提升进化，解锁新的外观
 
 ### 优先级颜色
+
 - 🔴 **高优先级** - 红色标签
 - 🟡 **中优先级** - 橙色标签
 - 🟢 **低优先级** - 绿色标签
@@ -105,22 +121,24 @@ npm run electron:build
 ## 技术栈
 
 | 技术 | 用途 |
-|------|------|
+| --- | --- |
 | [Electron](https://www.electronjs.org/) | 桌面应用框架 |
 | [Vue 3](https://vuejs.org/) | 前端UI框架 |
 | [Pinia](https://pinia.vuejs.org/) | 状态管理 |
 | [Vite](https://vitejs.dev/) | 构建工具 |
+| [Chart.js](https://www.chartjs.org/) | 统计图表绘制 |
 | [dayjs](https://day.js.org/) | 日期处理 |
 | [electron-builder](https://www.electron.build/) | 应用打包 |
 | [electron-updater](https://www.electron.build/auto-update) | 自动更新 |
 
 ## 项目结构
 
-```
+```text
 ├── electron/
-│   ├── main.js              # Electron 主进程（窗口、托盘、IPC、番茄计时器）
+│   ├── main.js              # Electron 主进程（窗口、托盘、IPC、番茄计时器、任务提醒）
 │   ├── preload.js           # 预加载脚本（contextBridge API）
-│   └── persistence.js       # 数据持久化（JSON 文件读写）
+│   ├── persistence.js       # 数据持久化（JSON 文件读写）
+│   └── taskReminders.js     # 任务提醒调度与通知
 ├── src/
 │   ├── components/
 │   │   ├── FilterBar.vue        # 任务过滤栏
@@ -137,19 +155,28 @@ npm run electron:build
 │   │   │   ├── PetInteraction.vue  # 宠物互动按钮
 │   │   │   ├── PixelCat.vue        # 像素猫咪渲染
 │   │   │   └── petPixelData.js     # 像素色彩数据
-│   │   └── pomodoro/
-│   │       ├── TimerCircle.vue    # 计时器圆环
-│   │       ├── TimerControls.vue  # 计时控制按钮
-│   │       └── WeeklyChart.vue    # 周报统计图表
+│   │   ├── pomodoro/
+│   │   │   ├── TimerCircle.vue    # 计时器圆环
+│   │   │   ├── TimerControls.vue  # 计时控制按钮
+│   │   │   └── WeeklyChart.vue    # 周报统计图表
+│   │   └── stats/
+│   │       ├── StatsCard.vue          # 统计卡片容器
+│   │       ├── TaskCompletionChart.vue # 任务完成趋势图
+│   │       ├── HabitCheckinChart.vue   # 习惯打卡率图
+│   │       └── PomodoroTrendChart.vue  # 番茄钟趋势图
 │   ├── stores/
 │   │   ├── taskStore.js      # 任务状态管理
 │   │   ├── habitStore.js     # 习惯状态管理
 │   │   ├── pomodoroStore.js  # 番茄钟状态管理
-│   │   └── petStore.js       # 宠物状态管理
+│   │   ├── petStore.js       # 宠物状态管理
+│   │   └── statsStore.js     # 统计数据聚合
+│   ├── utils/
+│   │   └── taskDisplay.js    # 任务日期/提醒显示格式化
 │   ├── views/
 │   │   ├── TasksView.vue     # 任务页面
 │   │   ├── HabitsView.vue    # 习惯页面
 │   │   ├── PomodoroView.vue  # 番茄钟页面
+│   │   ├── StatsView.vue     # 统计页面
 │   │   └── PetView.vue       # 宠物页面
 │   ├── App.vue               # 根组件
 │   ├── main.js               # Vue 入口
@@ -164,12 +191,13 @@ npm run electron:build
 
 所有数据保存在用户目录下：
 
-```
+```text
 Windows: %APPDATA%/todo-app/
-├── tasks.json        # 任务数据
-├── habits.json       # 习惯数据
-├── pomodoros.json    # 番茄钟记录
-└── pet.json          # 宠物数据
+├── tasks.json            # 任务数据
+├── habits.json           # 习惯数据
+├── pomodoros.json        # 番茄钟记录
+├── pet.json              # 宠物数据
+└── completion-log.json   # 任务完成历史日志（清理后保留统计）
 ```
 
 ## 开发
