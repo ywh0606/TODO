@@ -89,6 +89,7 @@ export const useTaskStore = defineStore('tasks', () => {
     const task = tasks.value.find(t => t.id === id)
     if (task) {
       task.completed = !task.completed
+      task.completedAt = task.completed ? dayjs().toISOString() : null
       task.updatedAt = dayjs().toISOString()
       await saveTasks()
       // 宠物奖励
@@ -111,7 +112,7 @@ export const useTaskStore = defineStore('tasks', () => {
   async function updateTask(id, updates) {
     const task = tasks.value.find(t => t.id === id)
     if (task) {
-      const allowed = ['title', 'priority', 'dueDate', 'dueTime', 'reminder', 'remindedAt']
+      const allowed = ['title', 'priority', 'dueDate', 'dueTime', 'reminder', 'remindedAt', 'completedAt']
       const safeUpdates = Object.fromEntries(
         Object.entries(updates).filter(([k]) => allowed.includes(k))
       )

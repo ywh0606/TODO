@@ -20,6 +20,7 @@ const tabs = [
   { key: 'tasks', icon: '📋', label: '清单' },
   { key: 'habits', icon: '✅', label: '习惯' },
   { key: 'pomodoro', icon: '🍅', label: '番茄钟' },
+  { key: 'stats', icon: '📊', label: '统计' },
   { key: 'pet', icon: '🐱', label: '伙伴' }
 ]
 

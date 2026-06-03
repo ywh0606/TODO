@@ -13,6 +13,7 @@
     <TasksView v-if="activeTab === 'tasks'" />
     <HabitsView v-else-if="activeTab === 'habits'" />
     <PomodoroView v-else-if="activeTab === 'pomodoro'" />
+    <StatsView v-else-if="activeTab === 'stats'" />
     <PetView v-else-if="activeTab === 'pet'" />
     <NavBar ref="navBar" @change="activeTab = $event" />
   </div>
@@ -25,6 +26,7 @@ import UpdateBanner from './components/UpdateBanner.vue'
 import TasksView from './views/TasksView.vue'
 import HabitsView from './views/HabitsView.vue'
 import PomodoroView from './views/PomodoroView.vue'
+import StatsView from './views/StatsView.vue'
 import PetView from './views/PetView.vue'
 
 const activeTab = ref('tasks')
