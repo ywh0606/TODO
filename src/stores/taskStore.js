@@ -34,11 +34,14 @@ function normalizeTaskReminderMetadata(task) {
 export const useTaskStore = defineStore('tasks', () => {
   const tasks = ref([])
   const filter = ref('all') // 'all' | 'today' | 'upcoming' | 'completed'
+  // 完成计数日志：{ "2026-06-01": 3 } — 清除已完成任务后仍保留历史统计
+  const completionLog = ref({})
 
   // 加载任务
   async function loadTasks() {
     if (window.electronAPI) {
       tasks.value = await window.electronAPI.loadTasks()
+      completionLog.value = await window.electronAPI.loadCompletionLog()
     }
     // 数据迁移：给旧任务补上 order 字段
     tasks.value.forEach((task, index) => {
@@ -198,10 +201,31 @@ export const useTaskStore = defineStore('tasks', () => {
     return { total, completed, pending }
   })
 
-  // 清除所有已完成任务
+  // 清除所有已完成任务（将完成计数保留到日志中）
   async function clearCompleted() {
+    const completedTasks = tasks.value.filter(t => t.completed)
+    // 按 completedAt 日期分组计数，累加到日志
+    completedTasks.forEach(task => {
+      // 兜底：无 completedAt 时使用 updatedAt 或当天日期
+      const dateStr = task.completedAt || task.updatedAt || dayjs().toISOString()
+      const date = dayjs(dateStr).format('YYYY-MM-DD')
+      completionLog.value[date] = (completionLog.value[date] || 0) + 1
+    })
     tasks.value = tasks.value.filter(t => !t.completed)
+    // 先存日志再存任务，避免 log 保存失败导致统计丢失
+    await saveCompletionLog()
     await saveTasks()
+  }
+
+  // 保存完成计数日志
+  async function saveCompletionLog() {
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.saveCompletionLog(JSON.parse(JSON.stringify(completionLog.value)))
+      } catch (e) {
+        console.error('Failed to save completion log:', e)
+      }
+    }
   }
 
   return {
@@ -209,6 +233,7 @@ export const useTaskStore = defineStore('tasks', () => {
     filter,
     filteredTasks,
     stats,
+    completionLog,
     loadTasks,
     addTask,
     toggleTask,

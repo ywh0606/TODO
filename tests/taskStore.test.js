@@ -6,6 +6,8 @@ import { useTaskStore } from '../src/stores/taskStore'
 // Mock window.electronAPI
 const mockSaveTasks = vi.fn().mockResolvedValue({ success: true })
 const mockLoadTasks = vi.fn().mockResolvedValue([])
+const mockLoadCompletionLog = vi.fn().mockResolvedValue({})
+const mockSaveCompletionLog = vi.fn().mockResolvedValue({ success: true })
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -14,6 +16,8 @@ beforeEach(() => {
   window.electronAPI = {
     saveTasks: mockSaveTasks,
     loadTasks: mockLoadTasks,
+    loadCompletionLog: mockLoadCompletionLog,
+    saveCompletionLog: mockSaveCompletionLog,
     savePet: vi.fn().mockResolvedValue({ success: true })
   }
 })
@@ -865,5 +869,73 @@ describe('clearCompleted', () => {
     await store.clearCompleted()
 
     expect(store.tasks).toHaveLength(0)
+  })
+
+  it('清除后已完成计数保留到 completionLog', async () => {
+    const store = useTaskStore()
+    await store.addTask('任务1', 'medium', null)
+    await store.addTask('任务2', 'medium', null)
+    await store.toggleTask(store.tasks[0].id)
+    await store.toggleTask(store.tasks[1].id)
+
+    await store.clearCompleted()
+
+    // completionLog 应包含今天的日期作为 key
+    const today = new Date().toISOString().slice(0, 10)
+    expect(store.completionLog[today]).toBe(2)
+  })
+
+  it('清除后调用 saveCompletionLog 保存日志', async () => {
+    const store = useTaskStore()
+    await store.addTask('待办', 'medium', null)
+    await store.addTask('已完成', 'medium', null)
+    await store.toggleTask(store.tasks[1].id)
+    vi.clearAllMocks()
+
+    await store.clearCompleted()
+
+    expect(mockSaveCompletionLog).toHaveBeenCalledTimes(1)
+  })
+
+  it('多次清除同一日期的计数累加', async () => {
+    const store = useTaskStore()
+    // 第一次清除
+    await store.addTask('任务1', 'medium', null)
+    await store.toggleTask(store.tasks[0].id)
+    await store.clearCompleted()
+
+    // 第二次清除
+    await store.addTask('任务2', 'medium', null)
+    await store.addTask('任务3', 'medium', null)
+    await store.toggleTask(store.tasks[0].id)
+    await store.toggleTask(store.tasks[1].id)
+    await store.clearCompleted()
+
+    const today = new Date().toISOString().slice(0, 10)
+    expect(store.completionLog[today]).toBe(3)
+  })
+
+  it('loadTasks 时同时加载 completionLog', async () => {
+    const logData = { '2026-05-30': 5, '2026-06-01': 3 }
+    mockLoadCompletionLog.mockResolvedValue(logData)
+
+    const store = useTaskStore()
+    await store.loadTasks()
+
+    expect(store.completionLog).toEqual(logData)
+  })
+
+  it('已完成任务无 completedAt 时使用 updatedAt 兜底', async () => {
+    const store = useTaskStore()
+    await store.addTask('旧任务', 'medium', null)
+    // 模拟旧数据：手动设置 completed 但没有 completedAt
+    store.tasks[0].completed = true
+    store.tasks[0].completedAt = null
+    // updatedAt 由 addTask 设置，格式为 ISO
+    const updatedAtDate = store.tasks[0].updatedAt.slice(0, 10)
+
+    await store.clearCompleted()
+
+    expect(store.completionLog[updatedAtDate]).toBe(1)
   })
 })

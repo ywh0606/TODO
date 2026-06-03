@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = require('electron')
 const path = require('path')
 const { autoUpdater } = require('electron-updater')
-const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros, loadPetData, savePetData } = require('./persistence')
+const { init, loadData, saveData, loadHabits, saveHabits, loadPomodoros, savePomodoros, loadPetData, savePetData, loadCompletionLog, saveCompletionLog } = require('./persistence')
 const {
   calculateReminderTime,
   canScheduleTaskReminder,
@@ -316,6 +316,18 @@ app.whenReady().then(() => {
       return { success: true }
     } catch (e) {
       console.error('Failed to save pet:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  // Completion log
+  ipcMain.handle('load-completion-log', () => loadCompletionLog())
+  ipcMain.handle('save-completion-log', (event, data) => {
+    try {
+      saveCompletionLog(data)
+      return { success: true }
+    } catch (e) {
+      console.error('Failed to save completion log:', e)
       return { success: false, error: e.message }
     }
   })

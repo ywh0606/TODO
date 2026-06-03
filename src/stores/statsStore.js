@@ -30,21 +30,26 @@ export const useStatsStore = defineStore('stats', () => {
   const taskStats = computed(() => {
     const taskStore = useTaskStore()
     const tasks = taskStore.tasks
+    const log = taskStore.completionLog
 
-    // 每日完成数
+    // 每日完成数（当前任务 + 历史日志）
     const dailyCompleted = dateRange.value.map(date => {
-      return tasks.filter(t => {
+      const fromActiveTasks = tasks.filter(t => {
         if (!t.completedAt) return false
         return dayjs(t.completedAt).format('YYYY-MM-DD') === date
       }).length
+      const fromLog = log[date] || 0
+      return fromActiveTasks + fromLog
     })
 
     // 今日摘要
     const today = dayjs().format('YYYY-MM-DD')
-    const todayCompleted = tasks.filter(t => {
+    const todayFromActiveTasks = tasks.filter(t => {
       if (!t.completedAt) return false
       return dayjs(t.completedAt).format('YYYY-MM-DD') === today
     }).length
+    const todayFromLog = log[today] || 0
+    const todayCompleted = todayFromActiveTasks + todayFromLog
     const todayPending = tasks.filter(t => !t.completed).length
 
     return {
